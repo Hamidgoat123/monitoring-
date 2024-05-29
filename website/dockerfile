@@ -1,0 +1,22 @@
+# File: website/Dockerfile
+
+# Use the official Node.js 14 image.
+FROM node:14
+
+# Create app directory
+WORKDIR /usr/src/app
+
+# Install app dependencies by copying
+# package.json and package-lock.json
+COPY package*.json ./
+
+RUN npm install
+
+# Copy app source
+COPY . .
+
+# Expose the port the app runs on
+EXPOSE 7070
+
+# Command to run the app
+CMD [ "node", "server.js" ]

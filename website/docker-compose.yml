@@ -1,0 +1,9 @@
+version: '3.7'
+services:
+  web:
+    build: ./
+    ports:
+      - "7070:7070" # Expose the Node.js application on port 7070
+networks:
+  monitoring:
+    driver: bridge

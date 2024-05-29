@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 15s # Scrape targets every 15 seconds.
+
+scrape_configs:
+  - job_name: 'nodejs'
+    static_configs:
+      - targets: ['localhost:7070'] # Node.js application's exposed metrics endpoint
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090'] # Prometheus monitoring itself

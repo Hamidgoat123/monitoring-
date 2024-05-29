@@ -1,0 +1,101 @@
+---
+- name: Install and configure Prometheus and Grafana
+  hosts: localhost
+  become: yes
+
+  handlers:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Restart Prometheus
+      systemd:
+        name: prometheus
+        state: restarted
+
+    - name: Restart Grafana
+      systemd:
+        name: grafana-server
+        state: restarted
+
+  tasks:
+    - name: Install necessary packages
+      package:
+        name: "{{ item }}"
+        state: latest
+      loop:
+        - wget
+        - curl
+        - unzip
+
+    - name: Download and extract Prometheus
+      unarchive:
+        src: "https://github.com/prometheus/prometheus/releases/download/v2.30.0/prometheus-2.30.0.linux-amd64.tar.gz"
+        dest: "/opt/"
+        remote_src: yes
+        creates: "/opt/prometheus-2.30.0.linux-amd64"
+
+    - name: Create Prometheus directories
+      file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - "/etc/prometheus"
+        - "/var/lib/prometheus"
+
+    - name: Copy Prometheus configuration file
+      copy:
+        src: "prometheus.yml"
+        dest: "/etc/prometheus/prometheus.yml"
+      notify: Restart Prometheus
+
+    - name: Ensure Prometheus binary is executable
+      file:
+        path: "/opt/prometheus-2.30.0.linux-amd64/prometheus"
+        mode: '0755'
+
+    - name: Create Prometheus service file
+      copy:
+        dest: /etc/systemd/system/prometheus.service
+        content: |
+          [Unit]
+          Description=Prometheus Server
+          Wants=network-online.target
+          After=network-online.target
+
+          [Service]
+          User=root
+          Group=root
+          Type=simple
+          ExecStart=/opt/prometheus-2.30.0.linux-amd64/prometheus \
+            --config.file=/etc/prometheus/prometheus.yml \
+            --storage.tsdb.path=/var/lib/prometheus/ \
+            --web.console.templates=/opt/prometheus-2.30.0.linux-amd64/consoles \
+            --web.console.libraries=/opt/prometheus-2.30.0.linux-amd64/console_libraries
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Reload systemd
+
+    - name: Enable and start Prometheus service
+      systemd:
+        name: prometheus
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+    - name: Download and install Grafana
+      get_url:
+        url: "https://dl.grafana.com/oss/release/grafana_8.3.2_amd64.deb"
+        dest: "/tmp/grafana.deb"
+
+    - name: Install Grafana
+      apt:
+        dpkg_options: 'force-confnew'
+        deb: "/tmp/grafana.deb"
+
+    - name: Start and enable Grafana service
+      systemd:
+        name: grafana-server
+        state: started
+        enabled: yes
